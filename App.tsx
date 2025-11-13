@@ -11,8 +11,9 @@ import ScribeView from './components/ScribeView';
 import { analyzeDream, AnalysisOptions } from './services/geminiService';
 import LoadingSpinner from './components/LoadingSpinner';
 import AuthView from './components/AuthView';
-import { getCurrentUser, logOut, getDreamsForUser, saveDreamsForUser, startFreeTrial, updateUser } from './services/authService';
+import { onAuthStateChanged, logOut, getDreamsForUser, saveDreamForUser, addChatMessageToDream } from './services/authService';
 import UpgradeView from './components/UpgradeView';
+import { redirectToCheckout } from './services/paymentService';
 
 // Helper to check if the user has pro access (either via trial or subscription)
 export const isProOrTrialActive = (user: User | null): boolean => {
@@ -29,22 +30,28 @@ export default function App() {
   const [dreams, setDreams] = useState<Dream[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // For general loading like dream analysis
+  const [isAppLoading, setIsAppLoading] = useState(true); // For initial auth/data load
   
-  // Auth state: undefined means loading, null means no user, User object means logged in
-  const [currentUser, setCurrentUser] = useState<User | null | undefined>(undefined);
+  // Auth state: null means no user, User object means logged in
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const isPro = isProOrTrialActive(currentUser);
 
-  // Check for logged-in user on initial load
+  // Listen for auth state changes on initial load
   useEffect(() => {
-    const user = getCurrentUser();
-    if (user) {
+    const unsubscribe = onAuthStateChanged(async (user) => {
       setCurrentUser(user);
-      const userDreams = getDreamsForUser(user.id);
-      setDreams(userDreams);
-    } else {
-      setCurrentUser(null);
-    }
+      if (user) {
+        const userDreams = await getDreamsForUser(user.id);
+        setDreams(userDreams);
+      } else {
+        setDreams([]);
+      }
+      setIsAppLoading(false);
+    });
+    
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
   const handleAddDream = useCallback(async (dreamText: string, mood?: DreamMood, options?: AnalysisOptions) => {
@@ -74,14 +81,15 @@ export default function App() {
         userId: currentUser.id,
         text: dreamText,
         mood,
-        timestamp: new Date().toLocaleString(),
+        timestamp: new Date().toISOString(), // Use ISO string for consistent sorting
         analysis,
         chatHistory: [],
       };
-      const updatedDreams = [newDream, ...dreams];
-      setDreams(updatedDreams);
-      saveDreamsForUser(currentUser.id, updatedDreams);
+      
+      await saveDreamForUser(currentUser.id, newDream);
+      setDreams(prevDreams => [newDream, ...prevDreams]);
       setActiveTab(ActiveTab.Journal);
+
     } catch (error) {
       console.error("Failed to analyze dream:", error);
       alert("Sorry, we couldn't analyze your dream. Please try again.");
@@ -91,44 +99,42 @@ export default function App() {
     }
   }, [dreams, currentUser, isPro]);
   
-  const handleAddChatMessage = (dreamId: string, message: ChatMessage) => {
+  const handleAddChatMessage = async (dreamId: string, message: ChatMessage) => {
     if (!currentUser) return;
+
+    let updatedHistory: ChatMessage[] = [];
     const updatedDreams = dreams.map(dream => {
       if (dream.id === dreamId) {
-        const updatedHistory = [...(dream.chatHistory || []), message];
+        updatedHistory = [...(dream.chatHistory || []), message];
         return { ...dream, chatHistory: updatedHistory };
       }
       return dream;
     });
+
     setDreams(updatedDreams);
-    saveDreamsForUser(currentUser.id, updatedDreams);
+    await addChatMessageToDream(currentUser.id, dreamId, updatedHistory);
   };
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
-    const userDreams = getDreamsForUser(user.id);
-    setDreams(userDreams);
+
+  const handleLogout = async () => {
+    await logOut();
+    // The onAuthStateChanged listener will handle setting currentUser to null
   };
 
-  const handleLogout = () => {
-    logOut();
-    setCurrentUser(null);
-    setDreams([]);
-  };
-
-  const handleStartTrial = async () => {
+  const handleUpgrade = async () => {
     if (!currentUser) return;
     setIsLoading(true);
     try {
-      const updatedUser = await startFreeTrial(currentUser.id);
-      setCurrentUser(updatedUser);
-      setIsUpgradeModalOpen(false);
+      // This function will now redirect the user to Stripe's checkout.
+      await redirectToCheckout(currentUser);
+      // The user will be redirected away, so we don't need to do much here.
+      // If they cancel, they come back. If they succeed, the webhook will update their status.
     } catch (error) {
-      console.error("Failed to start free trial:", error);
-      alert("Could not start your free trial. Please try again.");
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to redirect to checkout:", error);
+      alert("Could not connect to the payment service. Please try again.");
+      setIsLoading(false); // Only set loading to false if an error occurs before redirect
     }
+    // Don't set isLoading to false here, as the page will be redirected.
   };
 
 
@@ -148,7 +154,7 @@ export default function App() {
   };
 
   // Render a loading spinner while checking auth status
-  if (currentUser === undefined) {
+  if (isAppLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner />
@@ -158,7 +164,7 @@ export default function App() {
 
   // Render AuthView if no user is logged in
   if (!currentUser) {
-    return <AuthView onLogin={handleLogin} />;
+    return <AuthView />;
   }
 
   // Render the main app if a user is logged in
@@ -185,7 +191,7 @@ export default function App() {
       {isUpgradeModalOpen && (
         <UpgradeView 
           onClose={() => setIsUpgradeModalOpen(false)}
-          onUpgrade={handleStartTrial}
+          onUpgrade={handleUpgrade}
           isLoading={isLoading}
           user={currentUser}
         />

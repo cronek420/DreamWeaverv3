@@ -192,6 +192,18 @@ const DreamCard: React.FC<DreamCardProps> = ({ dream, onAddChatMessage }) => {
     }
   };
 
+  const getFormattedDate = (isoString: string) => {
+      try {
+          return new Date(isoString).toLocaleDateString(undefined, {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+          });
+      } catch (e) {
+          return "Invalid Date";
+      }
+  };
+
   return (
     <>
     <div className="bg-[#1a1c2e]/50 border border-[#6C63FF]/10 rounded-xl p-4 transition-all duration-300">
@@ -200,7 +212,7 @@ const DreamCard: React.FC<DreamCardProps> = ({ dream, onAddChatMessage }) => {
           {MoodIcon && <MoodIcon className="w-6 h-6 mt-1 text-white/80"/>}
           <div>
             <h3 className="text-md font-semibold text-white pr-4">{analysis?.summary || "A new dream"}</h3>
-             <p className="text-xs text-gray-500 mt-1">{dream.timestamp.split(',')[0]}</p>
+             <p className="text-xs text-gray-500 mt-1">{getFormattedDate(dream.timestamp)}</p>
           </div>
         </div>
         <p className={`text-xs text-gray-400 font-semibold transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>▼</p>

@@ -1,17 +1,10 @@
 import React, { useState } from 'react';
-import { User } from '../types';
 import { logIn, signUp } from '../services/authService';
 import LoadingSpinner from './LoadingSpinner';
 import { DreamWeaverLogoIcon } from './icons/AppIcons';
 
-interface AuthViewProps {
-  onLogin: (user: User) => void;
-}
-
-type AuthMode = 'login' | 'signup';
-
-const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
-  const [mode, setMode] = useState<AuthMode>('login');
+const AuthView: React.FC = () => {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -27,15 +20,32 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
     setError(null);
 
     try {
-      let user: User;
       if (mode === 'login') {
-        user = await logIn(email, password);
+        await logIn(email, password);
       } else {
-        user = await signUp(email, password);
+        await signUp(email, password);
       }
-      onLogin(user);
+      // onLogin is no longer needed; the App's onAuthStateChanged listener will handle the update.
     } catch (err: any) {
-      setError(err.message || 'An unexpected error occurred.');
+      // Provide more user-friendly error messages from Firebase
+      let message = 'An unexpected error occurred.';
+      if (err.code) {
+          switch (err.code) {
+              case 'auth/user-not-found':
+              case 'auth/wrong-password':
+                  message = 'Invalid email or password.';
+                  break;
+              case 'auth/email-already-in-use':
+                  message = 'An account with this email already exists.';
+                  break;
+              case 'auth/weak-password':
+                  message = 'Password should be at least 6 characters.';
+                  break;
+              default:
+                  message = err.message;
+          }
+      }
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -44,6 +54,8 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
   const toggleMode = () => {
     setMode(mode === 'login' ? 'signup' : 'login');
     setError(null);
+    setEmail('');
+    setPassword('');
   };
 
   return (
@@ -73,6 +85,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
                 id="email"
                 type="email"
                 value={email}
+                autoComplete="email"
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full bg-[#1a1c2e] text-gray-200 p-3 rounded-lg outline-none"
@@ -88,6 +101,7 @@ const AuthView: React.FC<AuthViewProps> = ({ onLogin }) => {
                 id="password"
                 type="password"
                 value={password}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
