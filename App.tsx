@@ -1,3 +1,4 @@
+import './index.css';
 import React, { useState, useCallback, useEffect } from 'react';
 import { ActiveTab, Dream, ChatMessage, User, DreamMood } from './types';
 import Header from './components/Header';
