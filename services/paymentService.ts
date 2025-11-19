@@ -3,10 +3,16 @@ import { User } from '../types';
 
 // The Stripe publishable key is now sourced from environment variables.
 // This is a secure practice for deployment.
+<<<<<<< HEAD
 const STRIPE_PUBLISHABLE_KEY = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || '';
 
+=======
+const STRIPE_PUBLISHABLE_KEY = process.env.STRIPE_PUBLISHABLE_KEY || 'pk_live_51RCVaCP36JQgLLd8SCHHtPzuSO2s6IuDXxxKLuJj9tpUQQLTiJfrtYosu9ih5M6KOI1D6VJ32Jw5p6G82bx00O2i00PI19OGmD';
+ STRIPE_PUBLISHABLE_KEY=pk_live_51RCVaCP36JQgLLd8SCHHtPzuSO2s6IuDXxxKLuJj9tpUQQLTiJfrtYosu9ih5M6KOI1D6VJ32Jw5p6G82bx00O2i00PI19OGmD
+>>>>>>> a46170d0027944c21db6bb29347f15b9adcb67ee
 if (!STRIPE_PUBLISHABLE_KEY) {
     console.warn('Stripe is not configured. Please add your Stripe publishable key to the `STRIPE_PUBLISHABLE_KEY` environment variable.');
+   
 }
 
 let stripePromise: Promise<any>;

@@ -1,14 +1,13 @@
 {
-  "name": "dreamweaverv3",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
+  "name": "dreamweaver-v3-server",
+  "version": "1.0.0",
+  "description": "Server for the DreamWeaver v3 frontend application.",
+  "main": "server.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "start": "node server.js"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@google/genai": "^1.29.0",
     "@tailwindcss/postcss": "^4.1.17",
     "dotenv": "^17.2.3",
@@ -24,5 +23,8 @@
     "tailwindcss": "^4.1.17",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+=======
+    "express": "^4.19.2"
+>>>>>>> a46170d0027944c21db6bb29347f15b9adcb67ee
   }
 }
