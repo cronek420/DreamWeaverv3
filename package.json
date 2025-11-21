@@ -4,6 +4,10 @@
   "description": "Server for the DreamWeaver v3 frontend application.",
   "main": "server.js",
   "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
     "start": "node server.js"
   },
   "dependencies": {

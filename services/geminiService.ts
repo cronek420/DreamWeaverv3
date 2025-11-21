@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type, LiveSession, LiveServerMessage, Modality, Blob, Part } from "@google/genai";
+import { GoogleGenAI, Type, LiveServerMessage, Modality, Blob, Part } from "@google/genai";
 import { DreamAnalysis, Dream } from '../types';
 
 const apiKey = import.meta.env.VITE_API_KEY;
@@ -78,7 +78,7 @@ const baseAnalysisSchema = {
 
 export const analyzeDream = async (dreamText: string, previousDreams: Dream[], options: AnalysisOptions): Promise<DreamAnalysis> => {
   let systemInstruction = `You are a dream analyst AI. Provide a detailed analysis of the user's new dream based on psychological principles and common dream symbolism. The tone should be calm, insightful, and scientific, not mystical. If context from previous dreams is provided, look for recurring themes, symbols, or emotional patterns and incorporate this into your analysis of the new dream to provide personalized insights.`;
-  
+
   const dynamicSchema: any = JSON.parse(JSON.stringify(baseAnalysisSchema)); // Deep copy
   let requestedAnalyses = [];
 
@@ -173,23 +173,23 @@ export const continueDreamConversation = async (dream: Dream, newUserMessage: st
   
   Now, engage with the user's follow-up questions based on the conversation history. Provide thoughtful, concise, and helpful responses that build upon the initial analysis.`;
 
-  const history: Part[] = (dream.chatHistory || []).map(message => ({
+  const history: any[] = (dream.chatHistory || []).map(message => ({
     role: message.role,
     parts: [{ text: message.content }],
   }));
 
   try {
-     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: [
-            ...history,
-            { role: 'user', parts: [{ text: newUserMessage }] }
-        ],
-        config: {
-            systemInstruction: systemInstruction,
-        },
-     });
-     return response.text;
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        ...history,
+        { role: 'user', parts: [{ text: newUserMessage }] }
+      ],
+      config: {
+        systemInstruction: systemInstruction,
+      },
+    });
+    return response.text;
   } catch (error) {
     console.error("Error continuing dream conversation:", error);
     throw new Error("Failed to get response from Gemini.");
@@ -200,28 +200,28 @@ export const continueDreamConversation = async (dream: Dream, newUserMessage: st
 export const getCommunityInsights = async (query: string, location: { latitude: number; longitude: number; }) => {
   try {
     const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `As an AI expert on dream patterns, answer the user's question about what people are dreaming about in specific locations. Use the available tools to provide geographically relevant and interesting insights. Query: "${query}"`,
-        config: {
-            tools: [{googleMaps: {}}],
-            toolConfig: {
-                retrievalConfig: {
-                    latLng: {
-                        latitude: location.latitude,
-                        longitude: location.longitude
-                    }
-                }
+      model: "gemini-2.5-flash",
+      contents: `As an AI expert on dream patterns, answer the user's question about what people are dreaming about in specific locations. Use the available tools to provide geographically relevant and interesting insights. Query: "${query}"`,
+      config: {
+        tools: [{ googleMaps: {} }],
+        toolConfig: {
+          retrievalConfig: {
+            latLng: {
+              latitude: location.latitude,
+              longitude: location.longitude
             }
-        },
+          }
+        }
+      },
     });
-    
+
     return {
-        text: response.text,
-        groundingChunks: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
+      text: response.text,
+      groundingChunks: response.candidates?.[0]?.groundingMetadata?.groundingChunks || []
     };
   } catch (error) {
-      console.error("Error fetching community insights:", error);
-      throw new Error("Failed to get community insights from Gemini.");
+    console.error("Error fetching community insights:", error);
+    throw new Error("Failed to get community insights from Gemini.");
   }
 };
 
@@ -247,7 +247,7 @@ export const generateDreamArt = async (prompt: string, aspectRatio: string): Pro
 
 export const generateInsightReport = async (dreams: Dream[]): Promise<string> => {
   const systemInstruction = `You are an expert psychological analyst specializing in dream patterns. The user has provided their dream analyses from a specific period. Synthesize this data into a cohesive report, written in markdown format. Identify the most prominent recurring themes and emotions. Note any shifts or progressions you see over this period. Conclude with a gentle, insightful summary of what their subconscious may be focusing on. Do not give medical advice. The tone should be reflective, empowering, and use headings and lists to be easily readable.`;
-  
+
   const formattedDreams = dreams.map(dream => (
     `Date: ${dream.timestamp.split(',')[0]}
 Mood: ${dream.mood || 'Not recorded'}
@@ -257,7 +257,7 @@ Emotions: ${Object.entries(dream.analysis?.emotions || {}).filter(([, score]) =>
   )).join('\n---\n');
 
   const userContent = `Based on the following dream data, generate a psychological insight report for me:\n\n${formattedDreams}`;
-  
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-pro",
@@ -275,7 +275,7 @@ Emotions: ${Object.entries(dream.analysis?.emotions || {}).filter(([, score]) =>
 
 export const getGlobalDreamTrends = async (dreams: Dream[]): Promise<string> => {
   const systemInstruction = "Analyze this anonymized global dream data (simulated from a user's history). Identify the top 3 most significant trends. For each trend, write a short, engaging summary suitable for a public feed. Format the output in markdown with headings for each trend.";
-  
+
   const themeCounts: Record<string, number> = {};
   dreams.forEach(dream => {
     dream.analysis?.themes.forEach(theme => {
@@ -305,19 +305,19 @@ export const connectDreamScribe = async (
   onMessage: (message: LiveServerMessage) => void,
   onError: (e: ErrorEvent) => void,
   onClose: (e: CloseEvent) => void
-): Promise<LiveSession> => {
+): Promise<any> => {
 
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   // FIX: Added `(window as any)` to support `webkitAudioContext` for older browsers without causing a TypeScript error.
   const inputAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-  
+
   const sessionPromise = ai.live.connect({
     model: 'gemini-2.5-flash-native-audio-preview-09-2025',
     callbacks: {
       onopen: () => {
         const source = inputAudioContext.createMediaStreamSource(stream);
         const scriptProcessor = inputAudioContext.createScriptProcessor(4096, 1, 1);
-        
+
         scriptProcessor.onaudioprocess = (audioProcessingEvent) => {
           const inputData = audioProcessingEvent.inputBuffer.getChannelData(0);
           const pcmBlob = createBlob(inputData);
@@ -325,7 +325,7 @@ export const connectDreamScribe = async (
             session.sendRealtimeInput({ media: pcmBlob });
           });
         };
-        
+
         source.connect(scriptProcessor);
         scriptProcessor.connect(inputAudioContext.destination);
       },
@@ -348,9 +348,9 @@ export const connectDreamScribe = async (
   return session;
 };
 
-export const closeDreamScribeSession = (session: LiveSession | null) => {
+export const closeDreamScribeSession = (session: any | null) => {
   if (!session) return;
-  
+
   const stream = (session as any)._stream;
   if (stream) {
     stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
